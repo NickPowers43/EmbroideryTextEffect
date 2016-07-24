@@ -26,6 +26,12 @@ var EmbroideryMesh = function(options) {
       }`,
     transparent: true,
   });
+
+  var geometry = new EmbroideryGeometry({
+    strokeData: strokeData,
+    lineWidth: lineWidth,
+  });
+  
 }
 
 EmbroideryMesh.prototype = Object.create(THREE.Group.prototype);
