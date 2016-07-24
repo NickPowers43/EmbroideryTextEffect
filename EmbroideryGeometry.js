@@ -17,6 +17,7 @@ function partitionStrokeData(strokeData) {
 
     var vertex = {
       position: new THREE.Vector3(x1, y1, 0),
+      time: t1,
     }
     
     if(currentStrokeVertexArray.length == 0.0) {
@@ -63,6 +64,22 @@ var EmbroideryGeometry = function(options) {
     var prevRightVertex = new THREE.Vector3();
     var prevLeft = new THREE.Vector3();
     
+    var currStart = 0.0;
+    var currEnd = 0.0;
+    var prevStart = 0.0;
+    var prevEnd = 0.0;
+    
+    function pushQuad(){
+      //create a quad using our four vertices
+      pushVertex(prevRightVertex, prevLeft, prevStart, prevEnd);
+      pushVertex(currLeftVertex, currLeft, currStart, currEnd);
+      pushVertex(prevLeftVertex, prevLeft, prevStart, prevEnd);
+      
+      pushVertex(prevRightVertex, prevLeft, prevStart, prevEnd);
+      pushVertex(currRightVertex, currLeft, currStart, currEnd);
+      pushVertex(currLeftVertex, currLeft, currStart, currEnd);
+    }
+    
     //start the mesh for this stroke
     for(var i = 0; i < stroke.vertices.length - 2; i++) {
       
@@ -79,14 +96,7 @@ var EmbroideryGeometry = function(options) {
       currRightVertex.add(stroke.vertices[i].position);
       
       if(i > 0) {
-        //create a quad using our four vertices
-        pushVertex(prevRightVertex, prevLeft, 0.0, 0.0);
-        pushVertex(currLeftVertex, currLeft, 0.0, 0.0);
-        pushVertex(prevLeftVertex, prevLeft, 0.0, 0.0);
-        
-        pushVertex(prevRightVertex, prevLeft, 0.0, 0.0);
-        pushVertex(currRightVertex, currLeft, 0.0, 0.0);
-        pushVertex(currLeftVertex, currLeft, 0.0, 0.0);
+        pushQuad();
       }
       
       prevDir.copy(currDir);
