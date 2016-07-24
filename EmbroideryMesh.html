@@ -5,6 +5,7 @@
   <script src="dat.gui.js"></script>
   <script src="stats.min.js"></script>
   <script src="TrackballControls.js"></script>
+  <script src="EmbroideryGeometry.js"></script>
   <script src="EmbroideryMesh.js"></script>
   <script src="TestStrokes.js"></script>
   <style>
@@ -42,14 +43,14 @@
     renderer.setClearColor(0);
 
     var controls = new THREE.TrackballControls(camera, renderer.domElement);
-		controls.minDistance = 1;
-		controls.maxDistance = 1000;
+    controls.minDistance = 1;
+    controls.maxDistance = 1000;
 
     var mesh;
     var controller = {
       speed: 1.0,//speed of the threads
-	  spacing: 0.0,//spacing between each weave of thread
-	  thickness: 0.05,//thickness of the thread
+      spacing: 0.0,//spacing between each weave of thread
+      thickness: 0.05,//thickness of the thread
       restart: function() {
         if (mesh) {
           scene.remove(mesh);
@@ -58,15 +59,15 @@
         mesh = new EmbroideryMesh({
           strokeData: TestStrokes[2],
           lineWidth: 2,
-		  
+          
           color: new THREE.Color(0x808080),
-		  
+          
           speed: controller.speed,
           spacing: controller.spacing,
           thickness: controller.thickness
         });
-        var size = mesh.boundingBox.size();
-        mesh.position.set(-size.x/2, -size.y/2, 0);
+        //var size = mesh.boundingBox.size();
+        //mesh.position.set(-size.x/2, -size.y/2, 0);
         mesh.start();
         scene.add(mesh);
       },
@@ -83,7 +84,7 @@
       controls.update();
       renderer.render(scene, camera);
     }
-    render()
+    render();
 
   </script>
 </body>
