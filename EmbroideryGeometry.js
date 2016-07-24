@@ -88,6 +88,14 @@ StrokePoint.prototype.advance = function(next) {
   this.end = next.end;
 }
 
+var LinearVertexRig = function(origin, dir, incAmount) {
+  this.origin = origin;
+  this.dir = dir;
+  this.incAmount = incAmount;
+  this.left = new THREE.Vector3(-this.dir.y, this.dir.x, 0);
+  this.right = new THREE.Vector3(this.dir.y, -this.dir.x, 0);
+}
+
 var EmbroideryGeometry = function(options) {
   var strokeData = options.strokeData;
   var thickness = options.thickness;
@@ -110,6 +118,43 @@ var EmbroideryGeometry = function(options) {
     starts.push(start);
     ends.push(end);
     uvs.push(uv.x, uv.y);
+  }
+  
+  var divisions = 3;
+  
+  /*
+  * Creates a set of vertices/triangles that form a piece of exposed
+  * thread starting at "start" and ending at "end".
+  */
+  function makeStitch(start, end) {
+    
+    var diff = new THREE.Vector3();
+    diff.subVectors(end, start);
+    var length = diff.length();
+    var dir = new THREE.Vector3();
+    dir.copy(diff);
+    dir.normalize();
+    
+    function width(v) {
+      return Math.sin(v * Math.PI);
+    }
+    
+    var vRig = LinearVertexRig(start, dir, length / divisions);
+    
+    var v = 0.0;
+    var inc = 1.0 / divisions;
+    for(var i = 0; i < (divisions+1); i++) {
+      
+      var w = width(v);
+      var origin = new THREE.Vector3();
+      origin.copy(diff);
+      origin.multiplyScalar(v);
+      origin.add(start);
+      
+      
+      v += inc;
+    }
+    
   }
   
   for (stroke of strokes) {
