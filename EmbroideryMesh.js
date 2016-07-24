@@ -2,6 +2,7 @@
 
 var textureLoader = new THREE.TextureLoader();
 var threadTexture = textureLoader.load("textures/thread.png");
+var threadTexture = textureLoader.load("textures/fabric.png");
 threadTexture.wrapS = threadTexture.wrapT = THREE.RepeatWrapping;
 
 var EmbroideryMesh = function(options) {
