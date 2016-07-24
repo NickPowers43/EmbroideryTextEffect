@@ -32,6 +32,7 @@ var EmbroideryMesh = function(options) {
     lineWidth: lineWidth,
   });
   
+  THREE.Group.call(this);
 }
 
 EmbroideryMesh.prototype = Object.create(THREE.Group.prototype);
