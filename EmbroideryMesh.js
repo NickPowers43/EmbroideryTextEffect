@@ -13,16 +13,13 @@ var EmbroideryMesh = function(options) {
   var internalClock = new THREE.Clock(false);
   
   var material = new THREE.ShaderMaterial({
-    uniforms: {
-      
-    },
     vertexShader: `
       void main() {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: `
       void main() {
-		gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
       }`,
     transparent: true,
   });
