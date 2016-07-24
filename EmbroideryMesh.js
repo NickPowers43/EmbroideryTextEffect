@@ -32,7 +32,15 @@ var EmbroideryMesh = function(options) {
     lineWidth: lineWidth,
   });
   
+  var mesh = new THREE.Mesh(geometry, material);
+  
   THREE.Group.call(this);
+  this.add(mesh);
+  
+  this.start = function() {
+    internalClock.elapsedTime = 0; // reset this so that start always starts the animation at the beginning
+    internalClock.start();
+  }
 }
 
 EmbroideryMesh.prototype = Object.create(THREE.Group.prototype);
