@@ -13,9 +13,23 @@ var EmbroideryMesh = function(options) {
   var internalClock = new THREE.Clock(false);
   
   var material = new THREE.ShaderMaterial({
+    uniforms: {
+      time: {
+        value: 0.0
+      }
+    },
     vertexShader: `
+      uniform float time;
+      
+      attribute float start;
+      attribute float end;
+      attribute vec3 path;
+      
       void main() {
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        
+        vec3 offset = max(sin(time), 0.0) * path;//(time > start && end > time) ? path : vec3(0,0,0);
+        
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position + offset, 1.0);
       }`,
     fragmentShader: `
       void main() {
@@ -29,7 +43,15 @@ var EmbroideryMesh = function(options) {
     lineWidth: lineWidth,
   });
   
+  var lifetime = 10.0;
+  
   var mesh = new THREE.Mesh(geometry, material);
+  mesh.update = function() {
+    mesh.material.uniforms.time.value = internalClock.getElapsedTime();
+    if (mesh.material.uniforms.time.value < lifetime) {
+      window.requestAnimationFrame(mesh.update);
+    }
+  }
   
   THREE.Group.call(this);
   this.add(mesh);
@@ -37,6 +59,7 @@ var EmbroideryMesh = function(options) {
   this.start = function() {
     internalClock.elapsedTime = 0; // reset this so that start always starts the animation at the beginning
     internalClock.start();
+    requestAnimationFrame(mesh.update);
   }
 }
 

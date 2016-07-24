@@ -1,13 +1,13 @@
 // Copyright 2016 Gracious Eloise, Inc. All rights reserved.
 
 function partitionStrokeData(strokeData) {
-	//alert("partitionStrokeData not implemented");
   
   var strokeVertexArrays = [];
   var currentStrokeVertexArray = {
     length: 0.0,
     vertices: []
   };
+  var prevPos;
   //generate one large partition for now
   for (var i = 0; i < strokeData.length-3; i += 4) {
     var x1 = strokeData[i];
@@ -17,6 +17,10 @@ function partitionStrokeData(strokeData) {
 
     var vertex = {
       position: new THREE.Vector3(x1, y1, 0),
+    }
+    
+    if(currentStrokeVertexArray.length == 0.0) {
+      prevPos = vertex.position;
     }
     
     currentStrokeVertexArray.vertices.push(vertex);
@@ -31,13 +35,21 @@ var EmbroideryGeometry = function(options) {
   var lineWidth = options.lineWidth;
   var lineWidthHalf = lineWidth * 0.5;
   
-  
-  //alert("EmbroideryGeometry constructor not implemented");
-
   //partition stroke data into continuous stroke segments
   var strokes = partitionStrokeData(strokeData);
   
+  //vertex attribute arrays
   var positions = [];
+  var paths = [];
+  var starts = [];
+  var ends = [];
+  
+  function pushVertex(position, path, start, end) {
+    positions.push(position.x, position.y, position.z);
+    paths.push(path.x, path.y, path.z);
+    starts.push(start);
+    ends.push(end);
+  }
   
   for (stroke of strokes) {
     
@@ -68,13 +80,13 @@ var EmbroideryGeometry = function(options) {
       
       if(i > 0) {
         //create a quad using our four vertices
-        positions.push(prevRightVertex.x, prevRightVertex.y, prevRightVertex.z);
-        positions.push(currLeftVertex.x, currLeftVertex.y, currLeftVertex.z);
-        positions.push(prevLeftVertex.x, prevLeftVertex.y, prevLeftVertex.z);
+        pushVertex(prevRightVertex, prevLeft, 0.0, 0.0);
+        pushVertex(currLeftVertex, currLeft, 0.0, 0.0);
+        pushVertex(prevLeftVertex, prevLeft, 0.0, 0.0);
         
-        positions.push(prevRightVertex.x, prevRightVertex.y, prevRightVertex.z);
-        positions.push(currRightVertex.x, currRightVertex.y, currRightVertex.z);
-        positions.push(currLeftVertex.x, currLeftVertex.y, currLeftVertex.z);
+        pushVertex(prevRightVertex, prevLeft, 0.0, 0.0);
+        pushVertex(currRightVertex, currLeft, 0.0, 0.0);
+        pushVertex(currLeftVertex, currLeft, 0.0, 0.0);
       }
       
       prevDir.copy(currDir);
@@ -86,6 +98,9 @@ var EmbroideryGeometry = function(options) {
   
   THREE.BufferGeometry.call(this);
   this.addAttribute("position", new THREE.BufferAttribute(new Float32Array(positions), 3));
+  this.addAttribute("path", new THREE.BufferAttribute(new Float32Array(paths), 3));
+  this.addAttribute("start", new THREE.BufferAttribute(new Float32Array(starts), 1));
+  this.addAttribute("end", new THREE.BufferAttribute(new Float32Array(ends), 1));
 }
 
 EmbroideryGeometry.prototype = Object.create(THREE.BufferGeometry.prototype);
