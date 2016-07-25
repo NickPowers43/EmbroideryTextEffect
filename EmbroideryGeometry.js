@@ -1,13 +1,15 @@
 // Copyright 2016 Gracious Eloise, Inc. All rights reserved.
 
+var Stroke = function() {
+  this.length = 0.0;
+  this.vertices = [];
+  this.duration = 0.0;
+}
+
 function partitionStrokeData(strokeData, speed) {
   
   var strokeArray = [];
-  var currentStroke = {
-    length: 0.0,
-    vertices: [],
-    duration: 0.0,
-  };
+  var currentStroke = new Stroke();
   var prevPos;
   //generate one large partition for now
   for (var i = 0; i < strokeData.length-3; i += 4) {
@@ -15,7 +17,7 @@ function partitionStrokeData(strokeData, speed) {
     var y1 = strokeData[i+1];
     var t1 = strokeData[i+2];
     var deltaZ1 = strokeData[i+3];
-
+    
     var vertex = {
       position: new THREE.Vector3(x1, y1, 0),
       time: t1,
@@ -31,6 +33,15 @@ function partitionStrokeData(strokeData, speed) {
     }
     
     currentStroke.vertices.push(vertex);
+    
+    if(deltaZ1 > 0) {
+      
+      if(currentStroke.vertices.length > 1) {
+        currentStroke.duration = currentStroke.length / speed;
+        strokeArray.push(currentStroke);
+      }
+      currentStroke = new Stroke();
+    }
   }
   currentStroke.duration = currentStroke.length / speed;
   strokeArray.push(currentStroke);
@@ -70,9 +81,9 @@ StrokePoint.prototype.advance = function(next) {
   this.leftPath.copy(next.leftPath);
   this.rightPath.copy(next.rightPath);
   this.leftUV.copy(next.leftUV);
-  next.leftUV.x += 1.0;
   this.rightUV.copy(next.rightUV);
-  next.rightUV.x += 1.0;
+  next.leftUV.y += 1.0;
+  next.rightUV.y += 1.0;
   this.start = next.start;
   this.end = next.end;
 }
@@ -109,7 +120,7 @@ var EmbroideryGeometry = function(options) {
     
     curr.end = 100.0;
     curr.leftUV.set(0.0, 1.0);
-    curr.rightUV.set(0.0, 0.0);
+    curr.rightUV.set(1.0, 0.0);
     
     function pushQuad(){
       //create a quad using our four vertices

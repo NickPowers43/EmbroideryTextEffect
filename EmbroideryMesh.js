@@ -37,9 +37,9 @@ var EmbroideryMesh = function(options) {
       
       void main() {
         
-        uv_ = vec2(time + uv.x, uv.y);
+        uv_ = vec2(uv.x, time + uv.y);
         
-        vec3 offset = abs(sin(uv.x)) * path;//(time > start && end > time) ? path : vec3(0,0,0);
+        vec3 offset = abs(sin(uv.y)) * path;//(time > start && end > time) ? path : vec3(0,0,0);
         
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position + offset, 1.0);
       }`,
