@@ -68,6 +68,7 @@ var StrokePoint = function(start, end) {
   this.rightUV = new THREE.Vector2(1.0, 0.0);
   this.start = 0.0;
   this.end = 0.0;
+  this.intensity = 0.0;
 }
 StrokePoint.prototype.setThickness = function(thickness) {
   this.leftPath.set(-this.dir.y, this.dir.x, 0);
@@ -84,6 +85,7 @@ StrokePoint.prototype.copy = function(src) {
   this.rightUV.copy(src.rightUV);
   this.start = src.start;
   this.end = src.end;
+  this.intensity = src.intensity;
 }
 
 var EmbroideryGeometry = function(options) {
@@ -101,19 +103,21 @@ var EmbroideryGeometry = function(options) {
   var starts = [];
   var ends = [];
   var uvs = [];
+  var intensities = [];
   
-  function pushVertex(position, path, start, end, uv) {
+  function pushVertex(position, path, start, end, uv, intensity) {
     positions.push(position.x, position.y, position.z);
     paths.push(path.x, path.y, path.z);
     starts.push(start);
     ends.push(end);
     uvs.push(uv.x, uv.y);
+    intensities.push(intensity);
   }
   function pushLeftVertexOfStrokePoint(strokePoint) {
-      pushVertex(strokePoint.origin, strokePoint.leftPath, strokePoint.start, strokePoint.end, strokePoint.leftUV);
+      pushVertex(strokePoint.origin, strokePoint.leftPath, strokePoint.start, strokePoint.end, strokePoint.leftUV, strokePoint.intensity);
   }
   function pushRightVertexOfStrokePoint(strokePoint) {
-      pushVertex(strokePoint.origin, strokePoint.rightPath, strokePoint.start, strokePoint.end, strokePoint.rightUV);
+      pushVertex(strokePoint.origin, strokePoint.rightPath, strokePoint.start, strokePoint.end, strokePoint.rightUV, strokePoint.intensity);
   }
   
   var divisions = 4;
@@ -134,6 +138,10 @@ var EmbroideryGeometry = function(options) {
       return 0.2 + (Math.sin(v * Math.PI) * 0.3);
     }
     
+    function intensity(v) {
+      return 0.5 + (Math.sin(v * Math.PI) * 0.5);
+    }
+    
     var curr = new StrokePoint(start, end);
     var prev = new StrokePoint(start, end);
     
@@ -151,6 +159,7 @@ var EmbroideryGeometry = function(options) {
     for(var i = 0; i < (divisions+1); i++) {
       
       curr.setThickness(width(v));
+      curr.intensity = intensity(v);
       
       if(i > 0) {
         pushQuad();
@@ -232,6 +241,7 @@ var EmbroideryGeometry = function(options) {
   this.addAttribute("start", new THREE.BufferAttribute(new Float32Array(starts), 1));
   this.addAttribute("end", new THREE.BufferAttribute(new Float32Array(ends), 1));
   this.addAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
+  this.addAttribute("intensity", new THREE.BufferAttribute(new Float32Array(intensities), 1));
 }
 
 EmbroideryGeometry.prototype = Object.create(THREE.BufferGeometry.prototype);
