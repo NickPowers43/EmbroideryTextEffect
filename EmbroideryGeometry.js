@@ -31,6 +31,46 @@ function partitionStrokeData(strokeData) {
   return strokeVertexArrays;
 }
 
+/*
+* Represents a point along the stroke curve. This object can be used to
+* calculate the position and tex coords of vertices.
+*/
+var StrokePoint = function() {
+  this.dir = new THREE.Vector3();
+  this.leftPosition = new THREE.Vector3();
+  this.rightPosition = new THREE.Vector3();
+  this.left = new THREE.Vector3();
+  this.leftUV = new THREE.Vector2();
+  this.rightUV = new THREE.Vector2();
+  this.start = 0.0;
+  this.end = 0.0;
+}
+StrokePoint.prototype.set = function(curr, next, lineWidthHalf) {
+  this.dir.subVectors(next, curr);
+  this.dir.normalize();
+  this.left.set(-this.dir.y, this.dir.x, 0);
+  
+  this.leftPosition.copy(this.left);
+  this.leftPosition.multiplyScalar(lineWidthHalf);
+  this.rightPosition.copy(this.leftPosition);
+  this.rightPosition.negate();
+  
+  this.leftPosition.add(curr);
+  this.rightPosition.add(curr);
+}
+StrokePoint.prototype.advance = function(next) {
+  this.dir.copy(next.dir);
+  this.leftPosition.copy(next.leftPosition);
+  this.rightPosition.copy(next.rightPosition);
+  this.left.copy(next.left);
+  this.leftUV.copy(next.leftUV);
+  next.leftUV.x += 1.0;
+  this.rightUV.copy(next.rightUV);
+  next.rightUV.x += 1.0;
+  this.start = next.start;
+  this.end = next.end;
+}
+
 var EmbroideryGeometry = function(options) {
   var strokeData = options.strokeData;
   var lineWidth = options.lineWidth;
@@ -44,65 +84,45 @@ var EmbroideryGeometry = function(options) {
   var paths = [];
   var starts = [];
   var ends = [];
+  var uvs = [];
   
-  function pushVertex(position, path, start, end) {
+  function pushVertex(position, path, start, end, uv) {
     positions.push(position.x, position.y, position.z);
     paths.push(path.x, path.y, path.z);
     starts.push(start);
     ends.push(end);
+    uvs.push(uv.x, uv.y);
   }
   
   for (stroke of strokes) {
     
-    //variables we will use to construct the mesh
-    var currDir = new THREE.Vector3();
-    var currLeftVertex = new THREE.Vector3();
-    var currRightVertex = new THREE.Vector3();
-    var currLeft = new THREE.Vector3();
-    var prevDir = new THREE.Vector3();
-    var prevLeftVertex = new THREE.Vector3();
-    var prevRightVertex = new THREE.Vector3();
-    var prevLeft = new THREE.Vector3();
-    
-    var currStart = 0.0;
-    var currEnd = 0.0;
-    var prevStart = 0.0;
-    var prevEnd = 0.0;
+    //variables we will use to construct the quads of our mesh
+    curr = new StrokePoint();
+    curr.leftUV.set(0.0, 1.0);
+    curr.rightUV.set(0.0, 0.0);
+    prev = new StrokePoint();
     
     function pushQuad(){
       //create a quad using our four vertices
-      pushVertex(prevRightVertex, prevLeft, prevStart, prevEnd);
-      pushVertex(currLeftVertex, currLeft, currStart, currEnd);
-      pushVertex(prevLeftVertex, prevLeft, prevStart, prevEnd);
+      pushVertex(prev.rightPosition, prev.left, prev.start, prev.end, prev.rightUV);
+      pushVertex(prev.leftPosition, prev.left, prev.start, prev.end, prev.leftUV);
+      pushVertex(curr.leftPosition, curr.left, curr.start, curr.end, curr.leftUV);
       
-      pushVertex(prevRightVertex, prevLeft, prevStart, prevEnd);
-      pushVertex(currRightVertex, currLeft, currStart, currEnd);
-      pushVertex(currLeftVertex, currLeft, currStart, currEnd);
+      pushVertex(prev.rightPosition, prev.left, prev.start, prev.end, prev.rightUV);
+      pushVertex(curr.leftPosition, curr.left, curr.start, curr.end, curr.leftUV);
+      pushVertex(curr.rightPosition, curr.left, curr.start, curr.end, curr.rightUV);
     }
     
-    //start the mesh for this stroke
     for(var i = 0; i < stroke.vertices.length - 2; i++) {
       
-      currDir.subVectors(stroke.vertices[i+1].position, stroke.vertices[i].position);
-      currDir.normalize();
-      currLeft.set(-currDir.y, currDir.x, 0);
-      
-      currLeftVertex.copy(currLeft);
-      currLeftVertex.multiplyScalar(lineWidthHalf);
-      currRightVertex.copy(currLeftVertex);
-      currRightVertex.negate();
-      
-      currLeftVertex.add(stroke.vertices[i].position);
-      currRightVertex.add(stroke.vertices[i].position);
+      curr.set(stroke.vertices[i+1].position, stroke.vertices[i].position, lineWidthHalf);
       
       if(i > 0) {
         pushQuad();
       }
       
-      prevDir.copy(currDir);
-      prevLeftVertex.copy(currLeftVertex);
-      prevRightVertex.copy(currRightVertex);
-      prevLeft.copy(currLeft);
+      prev.advance(curr);
+      
     }
   }
   
@@ -111,6 +131,7 @@ var EmbroideryGeometry = function(options) {
   this.addAttribute("path", new THREE.BufferAttribute(new Float32Array(paths), 3));
   this.addAttribute("start", new THREE.BufferAttribute(new Float32Array(starts), 1));
   this.addAttribute("end", new THREE.BufferAttribute(new Float32Array(ends), 1));
+  this.addAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
 }
 
 EmbroideryGeometry.prototype = Object.create(THREE.BufferGeometry.prototype);

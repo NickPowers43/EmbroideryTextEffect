@@ -1,5 +1,9 @@
 // Copyright 2016 Gracious Eloise, Inc. All rights reserved.
 
+var textureLoader = new THREE.TextureLoader();
+var threadTexture = textureLoader.load("textures/thread.png");
+threadTexture.wrapS = threadTexture.wrapT = THREE.RepeatWrapping;
+
 var EmbroideryMesh = function(options) {
   var strokeData = options.strokeData;
   var lineWidth = options.lineWidth;
@@ -16,6 +20,10 @@ var EmbroideryMesh = function(options) {
     uniforms: {
       time: {
         value: 0.0
+      },
+      texture: {
+        type: "t",
+        value: threadTexture
       }
     },
     vertexShader: `
@@ -25,15 +33,23 @@ var EmbroideryMesh = function(options) {
       attribute float end;
       attribute vec3 path;
       
+      varying vec2 uv_;
+      
       void main() {
+        
+        uv_ = vec2(uv.x, time + uv.y);
         
         vec3 offset = max(sin(time), 0.0) * path;//(time > start && end > time) ? path : vec3(0,0,0);
         
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position + offset, 1.0);
       }`,
     fragmentShader: `
+      uniform sampler2D texture;
+      
+      varying vec2 uv_;
+      
       void main() {
-        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+        gl_FragColor = texture2D(texture, uv_);
       }`,
     transparent: true,
   });
