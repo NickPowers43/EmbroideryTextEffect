@@ -40,7 +40,7 @@
     var renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
     renderer.setPixelRatio(dpr);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0);
+    renderer.setClearColor(0xffffff);
 
     var controls = new THREE.TrackballControls(camera, renderer.domElement);
     controls.minDistance = 1;
@@ -48,9 +48,10 @@
 
     var mesh;
     var controller = {
-      speed: 1.0,//speed of the threads
-      spacing: 0.0,//spacing between each weave of thread
-      thickness: 0.05,//thickness of the thread
+      speed: 50.0,//speed of the threads
+      spacing: 0.0,//spacing between each stitch
+      thickness: 1.0,//thickness of the thread
+      stitchLength: 2.0,//length of a single stitch
       restart: function() {
         if (mesh) {
           scene.remove(mesh);
@@ -72,9 +73,10 @@
         scene.add(mesh);
       },
     }
-    gui.add(controller, "speed", 0, 10).onChange(controller.restart);
+    gui.add(controller, "speed", 1, 100).onChange(controller.restart);
     gui.add(controller, "spacing", 0, 1).onChange(controller.restart);
-    gui.add(controller, "thickness", 0.1, 2).onChange(controller.restart);
+    gui.add(controller, "thickness", 0.01, 2).onChange(controller.restart);
+    gui.add(controller, "stitchLength", 0.1, 6).onChange(controller.restart);
     gui.add(controller, "restart");
 
     controller.restart();

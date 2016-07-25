@@ -1,16 +1,23 @@
 // Copyright 2016 Gracious Eloise, Inc. All rights reserved.
 
+/*
+* A stroke represents a continuos line. A 't' written in print for example
+* will produce two strokes.
+*/
 var Stroke = function() {
-  this.length = 0.0;
+  this.strokeLength = 0.0;
   this.vertices = [];
-  this.duration = 0.0;
+  this.duration = 0.0;//the time it takes for the pen to travel across this stroke.
 }
 
+/*
+* Partitions the given strokeData into into an array of strokes.
+*/
 function partitionStrokeData(strokeData, speed) {
   
-  var strokeArray = [];
+  var strokes = [];
   var currentStroke = new Stroke();
-  var prevPos;
+  var prevPos = new THREE.Vector3();
   //generate one large partition for now
   for (var i = 0; i < strokeData.length-3; i += 4) {
     var x1 = strokeData[i];
@@ -23,13 +30,13 @@ function partitionStrokeData(strokeData, speed) {
       time: t1,
     }
     
-    if(currentStroke.length == 0.0) {
-      prevPos = vertex.position;
+    if(i == 0) {
+      prevPos.copy(vertex.position);
     } else {
       var difference = new THREE.Vector3();
       difference.subVectors(vertex.position, prevPos);
-      currentStroke.length += difference.length();
-      prevPos = vertex.position;
+      currentStroke.strokeLength += difference.length();
+      prevPos.copy(vertex.position);
     }
     
     currentStroke.vertices.push(vertex);
@@ -37,16 +44,16 @@ function partitionStrokeData(strokeData, speed) {
     if(deltaZ1 > 0) {
       
       if(currentStroke.vertices.length > 1) {
-        currentStroke.duration = currentStroke.length / speed;
-        strokeArray.push(currentStroke);
+        currentStroke.duration = currentStroke.strokeLength / speed;
+        strokes.push(currentStroke);
       }
       currentStroke = new Stroke();
     }
   }
-  currentStroke.duration = currentStroke.length / speed;
-  strokeArray.push(currentStroke);
+  currentStroke.duration = currentStroke.strokeLength / speed;
+  strokes.push(currentStroke);
   
-  return strokeArray;
+  return strokes;
 }
 
 /*
@@ -93,9 +100,14 @@ var EmbroideryGeometry = function(options) {
   var thickness = options.thickness;
   var thicknessHalf = thickness * 0.5;
   var speed = options.speed;
+  var spacing = options.spacing;
+  var stitchLength = options.stitchLength;
   
-  //partition stroke data into continuous stroke segments
-  var strokes = partitionStrokeData(strokeData, speed);
+  var stitchLengthSqr = stitchLength * stitchLength;
+  var spacingSqr = spacing * spacing;
+  
+  //samples to take for each stroke path segment
+  var samples = 100;
   
   //vertex attribute arrays
   var positions = [];
@@ -105,6 +117,9 @@ var EmbroideryGeometry = function(options) {
   var uvs = [];
   var intensities = [];
   
+  /*
+  * Pushes a vertex's attributes onto the appropriate buffers.
+  */
   function pushVertex(position, path, start, end, uv, intensity) {
     positions.push(position.x, position.y, position.z);
     paths.push(path.x, path.y, path.z);
@@ -126,25 +141,30 @@ var EmbroideryGeometry = function(options) {
   * Creates a mesh that form a piece of exposed
   * thread starting at "start" and ending at "end".
   */
-  function makeStitch(start, end) {
+  function makeStitch(start, end, begin, duration) {
     
     var inc = 1.0 / divisions;
     
     var incV = new THREE.Vector3();
     incV.subVectors(end, start);
+    var timeToCross = incV.length() / speed;
     incV.multiplyScalar(inc);
     
     function width(v) {
-      return 0.2 + (Math.sin(v * Math.PI) * 0.3);
+      return (0.2 + (Math.sin(v * Math.PI) * 0.3)) * thicknessHalf;
     }
     
     function intensity(v) {
-      return 0.5 + (Math.sin(v * Math.PI) * 0.5);
+      return 0.85 + (Math.sin(v * Math.PI) * 0.15);
     }
     
     var curr = new StrokePoint(start, end);
     var prev = new StrokePoint(start, end);
     
+    /*
+    * Pushes a single quad using variables "curr" and "prev"
+    * as a reference.
+    */
     function pushQuad(){
       pushLeftVertexOfStrokePoint(prev);
       pushRightVertexOfStrokePoint(prev);
@@ -154,6 +174,9 @@ var EmbroideryGeometry = function(options) {
       pushRightVertexOfStrokePoint(curr);
       pushLeftVertexOfStrokePoint(curr);
     }
+    
+    curr.start = begin;
+    curr.end = begin + duration;
     
     var v = 0.0;
     for(var i = 0; i < (divisions+1); i++) {
@@ -170,20 +193,29 @@ var EmbroideryGeometry = function(options) {
       curr.leftUV.y += inc;
       curr.rightUV.y += inc;
       curr.origin.add(incV);
+      curr.start += timeToCross * inc;
+      curr.end += timeToCross * inc;
     }
     
   }
   
   makeStitch(new THREE.Vector3(0,0,0), new THREE.Vector3(2, 0, 0));
   
-  var stitchLength = 2.0;
-  //samples to take for each stroke path segment
-  var samples = 100;
-  var stitchLengthSqr = stitchLength * stitchLength;
+  //partition stroke data into continuous stroke segments
+  var strokes = partitionStrokeData(strokeData, speed);
+  
+  var maxDuration = 0.0;
+  for (stroke of strokes) {
+    if(stroke.duration > maxDuration) {
+      maxDuration = stroke.duration;
+    }
+  }
   
   for (stroke of strokes) {
     
     if(stroke.vertices.length > 1) {
+      
+      var duration = stroke.duration;
       
       var flip = true;
       
@@ -192,16 +224,20 @@ var EmbroideryGeometry = function(options) {
       var inc = new THREE.Vector3();
       var samplePoint = new THREE.Vector3();
       var diff = new THREE.Vector3();
+      var deltaT = 0.0;
       
       origin.copy(stroke.vertices[0].position);
       
       prevPoint.copy(origin);
       
       inc.subVectors(stroke.vertices[1].position, origin);
+      deltaT = inc.length() / sampleCount / speed;
       inc.multiplyScalar(1.0 / sampleCount);
       
       samplePoint.copy(prevPoint);
       
+      
+      var begin = maxDuration - duration;
       var vertexI = 0;
       while(vertexI < stroke.vertices.length - 2) {
         
@@ -210,15 +246,16 @@ var EmbroideryGeometry = function(options) {
           
           diff.subVectors(samplePoint, prevPoint);
           
-          if(diff.lengthSq() >= stitchLengthSqr) {
+          if((flip) ? diff.lengthSq() >= stitchLengthSqr : diff.lengthSq() >= spacing) {
             
             if(flip) {
               //make a stitch.
-              makeStitch(prevPoint, samplePoint);
+              makeStitch(prevPoint, samplePoint, begin, 1000.0);
             }
             
             flip = !flip;
             
+            begin += deltaT;
             prevPoint.copy(samplePoint);
           }
           
@@ -230,10 +267,13 @@ var EmbroideryGeometry = function(options) {
         origin.copy(stroke.vertices[vertexI].position);
         inc.subVectors(stroke.vertices[vertexI+1].position, origin);
         inc.multiplyScalar(1.0 / sampleCount);
+        deltaT = inc.length();
         samplePoint.copy(origin);
       }
     }
   }
+  
+  this.duration = maxDuration;
   
   THREE.BufferGeometry.call(this);
   this.addAttribute("position", new THREE.BufferAttribute(new Float32Array(positions), 3));

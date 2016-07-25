@@ -3,7 +3,7 @@
 var textureLoader = new THREE.TextureLoader();
 var threadTexture = textureLoader.load("textures/thread.png");
 var fabricTexture = textureLoader.load("textures/fabric.png");
-threadTexture.wrapS = threadTexture.wrapT = THREE.RepeatWrapping;
+threadTexture.wrapS = threadTexture.wrapT = fabricTexture.wrapS = fabricTexture.wrapT = THREE.RepeatWrapping;
 
 var EmbroideryMesh = function(options) {
   var strokeData = options.strokeData;
@@ -14,6 +14,7 @@ var EmbroideryMesh = function(options) {
   var speed = options.speed || 2;
   var spacing = options.spacing || 0.5;
   var thickness = options.thickness || 0.8;
+  var stitchLength = options.stitchLength || 2.0;
 
   var internalClock = new THREE.Clock(false);
   
@@ -43,7 +44,7 @@ var EmbroideryMesh = function(options) {
         intensity_ = intensity;
         uv_ = vec2(uv.x, time + uv.y);
         
-        vec3 offset = path;//abs(sin(uv.y)) * path;//(time > start && end > time) ? path : vec3(0,0,0);
+        vec3 offset = ((time > start) && (end > time)) ? path : vec3(0,0,0);
         
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position + offset, 1.0);
       }`,
@@ -67,14 +68,14 @@ var EmbroideryMesh = function(options) {
     lineWidth: lineWidth,
     speed: speed,
     thickness: thickness,
+    spacing: spacing,
+    stitchLength: stitchLength,
   });
-  
-  var lifetime = 10.0;
   
   var mesh = new THREE.Mesh(geometry, material);
   mesh.update = function() {
     mesh.material.uniforms.time.value = internalClock.getElapsedTime();
-    if (mesh.material.uniforms.time.value < lifetime) {
+    if (mesh.material.uniforms.time.value < geometry.duration) {
       window.requestAnimationFrame(mesh.update);
     }
   }
