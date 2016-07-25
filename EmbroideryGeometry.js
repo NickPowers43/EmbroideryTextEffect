@@ -107,7 +107,7 @@ var EmbroideryGeometry = function(options) {
   var spacingSqr = spacing * spacing;
   
   //samples to take for each stroke path segment
-  var samples = 100;
+  var samples = 200;
   
   //vertex attribute arrays
   var positions = [];
@@ -199,8 +199,6 @@ var EmbroideryGeometry = function(options) {
     
   }
   
-  makeStitch(new THREE.Vector3(0,0,0), new THREE.Vector3(2, 0, 0));
-  
   //partition stroke data into continuous stroke segments
   var strokes = partitionStrokeData(strokeData, speed);
   
@@ -246,7 +244,7 @@ var EmbroideryGeometry = function(options) {
           
           diff.subVectors(samplePoint, prevPoint);
           
-          if((flip) ? diff.lengthSq() >= stitchLengthSqr : diff.lengthSq() >= spacing) {
+          if((flip) ? (diff.lengthSq() >= stitchLengthSqr) : (diff.lengthSq() >= spacingSqr)) {
             
             if(flip) {
               //make a stitch.

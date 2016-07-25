@@ -74,9 +74,9 @@
       },
     }
     gui.add(controller, "speed", 1, 100).onChange(controller.restart);
-    gui.add(controller, "spacing", 0, 1).onChange(controller.restart);
+    gui.add(controller, "spacing", 0, 10).onChange(controller.restart);
     gui.add(controller, "thickness", 0.01, 2).onChange(controller.restart);
-    gui.add(controller, "stitchLength", 0.1, 6).onChange(controller.restart);
+    gui.add(controller, "stitchLength", 0.1, 10).onChange(controller.restart);
     gui.add(controller, "restart");
 
     controller.restart();
