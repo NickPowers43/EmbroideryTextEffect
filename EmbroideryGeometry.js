@@ -53,39 +53,39 @@ function partitionStrokeData(strokeData, speed) {
 * Represents a point along the stroke curve. This object can be used to
 * calculate the position and tex coords of vertices.
 */
-var StrokePoint = function() {
-  this.dir = new THREE.Vector3();
+var StrokePoint = function(start, end) {
+  
   this.origin = new THREE.Vector3();
-  this.leftPath = new THREE.Vector3();
-  this.rightPath = new THREE.Vector3();
-  this.leftUV = new THREE.Vector2();
-  this.rightUV = new THREE.Vector2();
-  this.start = 0.0;
-  this.end = 0.0;
-}
-StrokePoint.prototype.set = function(curr, next, thicknessHalf) {
+  this.origin.copy(start);
   
-  this.origin.copy(curr);
-  
-  this.dir.subVectors(next, this.origin);
+  this.dir = new THREE.Vector3();
+  this.dir.subVectors(end, this.origin);
   this.dir.normalize();
   
+  this.leftPath = new THREE.Vector3();
+  this.rightPath = new THREE.Vector3();
+  this.leftUV = new THREE.Vector2(0.0, 0.0);
+  this.rightUV = new THREE.Vector2(1.0, 0.0);
+  this.start = 0.0;
+  this.end = 0.0;
+  this.intensity = 0.0;
+}
+StrokePoint.prototype.setThickness = function(thickness) {
   this.leftPath.set(-this.dir.y, this.dir.x, 0);
-  this.leftPath.multiplyScalar(thicknessHalf);
+  this.leftPath.multiplyScalar(thickness);
   this.rightPath.copy(this.leftPath);
   this.rightPath.multiplyScalar(-1.0);
 }
-StrokePoint.prototype.advance = function(next) {
-  this.origin.copy(next.origin);
-  this.dir.copy(next.dir);
-  this.leftPath.copy(next.leftPath);
-  this.rightPath.copy(next.rightPath);
-  this.leftUV.copy(next.leftUV);
-  this.rightUV.copy(next.rightUV);
-  next.leftUV.y += 1.0;
-  next.rightUV.y += 1.0;
-  this.start = next.start;
-  this.end = next.end;
+StrokePoint.prototype.copy = function(src) {
+  this.origin.copy(src.origin);
+  this.dir.copy(src.dir);
+  this.leftPath.copy(src.leftPath);
+  this.rightPath.copy(src.rightPath);
+  this.leftUV.copy(src.leftUV);
+  this.rightUV.copy(src.rightUV);
+  this.start = src.start;
+  this.end = src.end;
+  this.intensity = src.intensity;
 }
 
 var EmbroideryGeometry = function(options) {
@@ -103,46 +103,135 @@ var EmbroideryGeometry = function(options) {
   var starts = [];
   var ends = [];
   var uvs = [];
+  var intensities = [];
   
-  function pushVertex(position, path, start, end, uv) {
+  function pushVertex(position, path, start, end, uv, intensity) {
     positions.push(position.x, position.y, position.z);
     paths.push(path.x, path.y, path.z);
     starts.push(start);
     ends.push(end);
     uvs.push(uv.x, uv.y);
+    intensities.push(intensity);
+  }
+  function pushLeftVertexOfStrokePoint(strokePoint) {
+      pushVertex(strokePoint.origin, strokePoint.leftPath, strokePoint.start, strokePoint.end, strokePoint.leftUV, strokePoint.intensity);
+  }
+  function pushRightVertexOfStrokePoint(strokePoint) {
+      pushVertex(strokePoint.origin, strokePoint.rightPath, strokePoint.start, strokePoint.end, strokePoint.rightUV, strokePoint.intensity);
   }
   
-  for (stroke of strokes) {
+  var divisions = 4;
+  
+  /*
+  * Creates a mesh that form a piece of exposed
+  * thread starting at "start" and ending at "end".
+  */
+  function makeStitch(start, end) {
     
-    //variables we will use to construct the quads of our mesh
-    var curr = new StrokePoint();
-    var prev = new StrokePoint();
+    var inc = 1.0 / divisions;
     
-    curr.end = 100.0;
-    curr.leftUV.set(0.0, 1.0);
-    curr.rightUV.set(1.0, 0.0);
+    var incV = new THREE.Vector3();
+    incV.subVectors(end, start);
+    incV.multiplyScalar(inc);
     
-    function pushQuad(){
-      //create a quad using our four vertices
-      pushVertex(prev.origin, prev.leftPath, prev.start, prev.end, prev.leftUV);
-      pushVertex(curr.origin, curr.leftPath, curr.start, curr.end, curr.leftUV);
-      pushVertex(prev.origin, prev.rightPath, prev.start, prev.end, prev.rightUV);
-      
-      pushVertex(prev.origin, prev.rightPath, prev.start, prev.end, prev.rightUV);
-      pushVertex(curr.origin, curr.leftPath, curr.start, curr.end, curr.leftUV);
-      pushVertex(curr.origin, curr.rightPath, curr.start, curr.end, curr.rightUV);
+    function width(v) {
+      return 0.2 + (Math.sin(v * Math.PI) * 0.3);
     }
     
-    for(var i = 0; i < stroke.vertices.length - 2; i++) {
+    function intensity(v) {
+      return 0.5 + (Math.sin(v * Math.PI) * 0.5);
+    }
+    
+    var curr = new StrokePoint(start, end);
+    var prev = new StrokePoint(start, end);
+    
+    function pushQuad(){
+      pushLeftVertexOfStrokePoint(prev);
+      pushRightVertexOfStrokePoint(prev);
+      pushLeftVertexOfStrokePoint(curr);
       
-      curr.set(stroke.vertices[i+1].position, stroke.vertices[i].position, thicknessHalf);
+      pushRightVertexOfStrokePoint(prev);
+      pushRightVertexOfStrokePoint(curr);
+      pushLeftVertexOfStrokePoint(curr);
+    }
+    
+    var v = 0.0;
+    for(var i = 0; i < (divisions+1); i++) {
+      
+      curr.setThickness(width(v));
+      curr.intensity = intensity(v);
       
       if(i > 0) {
         pushQuad();
       }
       
-      prev.advance(curr);
+      v += inc;
+      prev.copy(curr);
+      curr.leftUV.y += inc;
+      curr.rightUV.y += inc;
+      curr.origin.add(incV);
+    }
+    
+  }
+  
+  makeStitch(new THREE.Vector3(0,0,0), new THREE.Vector3(2, 0, 0));
+  
+  var stitchLength = 2.0;
+  //samples to take for each stroke path segment
+  var samples = 100;
+  var stitchLengthSqr = stitchLength * stitchLength;
+  
+  for (stroke of strokes) {
+    
+    if(stroke.vertices.length > 1) {
       
+      var flip = true;
+      
+      var origin = new THREE.Vector3();
+      var prevPoint = new THREE.Vector3();
+      var inc = new THREE.Vector3();
+      var samplePoint = new THREE.Vector3();
+      var diff = new THREE.Vector3();
+      
+      origin.copy(stroke.vertices[0].position);
+      
+      prevPoint.copy(origin);
+      
+      inc.subVectors(stroke.vertices[1].position, origin);
+      inc.multiplyScalar(1.0 / sampleCount);
+      
+      samplePoint.copy(prevPoint);
+      
+      var vertexI = 0;
+      while(vertexI < stroke.vertices.length - 2) {
+        
+        var sampleCount = 0;
+        while(sampleCount < samples) {
+          
+          diff.subVectors(samplePoint, prevPoint);
+          
+          if(diff.lengthSq() >= stitchLengthSqr) {
+            
+            if(flip) {
+              //make a stitch.
+              makeStitch(prevPoint, samplePoint);
+            }
+            
+            flip = !flip;
+            
+            prevPoint.copy(samplePoint);
+          }
+          
+          samplePoint.add(inc);
+          sampleCount += 1;
+        }
+        vertexI += 1;
+        
+        origin.copy(stroke.vertices[vertexI].position);
+        inc.subVectors(stroke.vertices[vertexI+1].position, origin);
+        inc.multiplyScalar(1.0 / sampleCount);
+        samplePoint.copy(origin);
+      }
     }
   }
   
@@ -152,6 +241,7 @@ var EmbroideryGeometry = function(options) {
   this.addAttribute("start", new THREE.BufferAttribute(new Float32Array(starts), 1));
   this.addAttribute("end", new THREE.BufferAttribute(new Float32Array(ends), 1));
   this.addAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
+  this.addAttribute("intensity", new THREE.BufferAttribute(new Float32Array(intensities), 1));
 }
 
 EmbroideryGeometry.prototype = Object.create(THREE.BufferGeometry.prototype);

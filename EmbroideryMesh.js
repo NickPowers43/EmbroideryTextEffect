@@ -33,14 +33,17 @@ var EmbroideryMesh = function(options) {
       attribute float start;
       attribute float end;
       attribute vec3 path;
+      attribute float intensity;
       
       varying vec2 uv_;
+      varying float intensity_;
       
       void main() {
         
+        intensity_ = intensity;
         uv_ = vec2(uv.x, time + uv.y);
         
-        vec3 offset = abs(sin(uv.y)) * path;//(time > start && end > time) ? path : vec3(0,0,0);
+        vec3 offset = path;//abs(sin(uv.y)) * path;//(time > start && end > time) ? path : vec3(0,0,0);
         
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position + offset, 1.0);
       }`,
@@ -48,9 +51,13 @@ var EmbroideryMesh = function(options) {
       uniform sampler2D texture;
       
       varying vec2 uv_;
+      varying float intensity_;
       
       void main() {
-        gl_FragColor = texture2D(texture, uv_);
+        vec4 color = texture2D(texture, uv_);
+        color *= intensity_;
+        color.w = 1.0;
+        gl_FragColor = color;
       }`,
     transparent: true,
   });
