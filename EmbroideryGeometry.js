@@ -113,13 +113,13 @@ var EmbroideryGeometry = function(options) {
     
     function pushQuad(){
       //create a quad using our four vertices
-      pushVertex(prev.origin, prev.leftPath, prev.start, prev.end, prev.rightUV);
+      pushVertex(prev.origin, prev.leftPath, prev.start, prev.end, prev.leftUV);
       pushVertex(curr.origin, curr.leftPath, curr.start, curr.end, curr.leftUV);
-      pushVertex(prev.origin, prev.rightPath, prev.start, prev.end, prev.leftUV);
+      pushVertex(prev.origin, prev.rightPath, prev.start, prev.end, prev.rightUV);
       
       pushVertex(prev.origin, prev.rightPath, prev.start, prev.end, prev.rightUV);
-      pushVertex(curr.origin, curr.leftPath, curr.start, curr.end, curr.rightUV);
-      pushVertex(curr.origin, curr.rightPath, curr.start, curr.end, curr.leftUV);
+      pushVertex(curr.origin, curr.leftPath, curr.start, curr.end, curr.leftUV);
+      pushVertex(curr.origin, curr.rightPath, curr.start, curr.end, curr.rightUV);
     }
     
     for(var i = 0; i < stroke.vertices.length - 2; i++) {
