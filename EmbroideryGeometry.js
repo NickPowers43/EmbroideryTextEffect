@@ -1,11 +1,12 @@
 // Copyright 2016 Gracious Eloise, Inc. All rights reserved.
 
-function partitionStrokeData(strokeData) {
+function partitionStrokeData(strokeData, speed) {
   
-  var strokeVertexArrays = [];
-  var currentStrokeVertexArray = {
+  var strokeArray = [];
+  var currentStroke = {
     length: 0.0,
-    vertices: []
+    vertices: [],
+    duration: 0.0,
   };
   var prevPos;
   //generate one large partition for now
@@ -20,15 +21,21 @@ function partitionStrokeData(strokeData) {
       time: t1,
     }
     
-    if(currentStrokeVertexArray.length == 0.0) {
+    if(currentStroke.length == 0.0) {
+      prevPos = vertex.position;
+    } else {
+      var difference = new THREE.Vector3();
+      difference.subVectors(vertex.position, prevPos);
+      currentStroke.length += difference.length();
       prevPos = vertex.position;
     }
     
-    currentStrokeVertexArray.vertices.push(vertex);
+    currentStroke.vertices.push(vertex);
   }
-  strokeVertexArrays.push(currentStrokeVertexArray);
+  currentStroke.duration = currentStroke.length / speed;
+  strokeArray.push(currentStroke);
   
-  return strokeVertexArrays;
+  return strokeArray;
 }
 
 /*
@@ -37,32 +44,31 @@ function partitionStrokeData(strokeData) {
 */
 var StrokePoint = function() {
   this.dir = new THREE.Vector3();
-  this.leftPosition = new THREE.Vector3();
-  this.rightPosition = new THREE.Vector3();
-  this.left = new THREE.Vector3();
+  this.origin = new THREE.Vector3();
+  this.leftPath = new THREE.Vector3();
+  this.rightPath = new THREE.Vector3();
   this.leftUV = new THREE.Vector2();
   this.rightUV = new THREE.Vector2();
   this.start = 0.0;
   this.end = 0.0;
 }
-StrokePoint.prototype.set = function(curr, next, lineWidthHalf) {
-  this.dir.subVectors(next, curr);
+StrokePoint.prototype.set = function(curr, next, thicknessHalf) {
+  
+  this.origin.copy(curr);
+  
+  this.dir.subVectors(next, this.origin);
   this.dir.normalize();
-  this.left.set(-this.dir.y, this.dir.x, 0);
   
-  this.leftPosition.copy(this.left);
-  this.leftPosition.multiplyScalar(lineWidthHalf);
-  this.rightPosition.copy(this.leftPosition);
-  this.rightPosition.negate();
-  
-  this.leftPosition.add(curr);
-  this.rightPosition.add(curr);
+  this.leftPath.set(-this.dir.y, this.dir.x, 0);
+  this.leftPath.multiplyScalar(thicknessHalf);
+  this.rightPath.copy(this.leftPath);
+  this.rightPath.multiplyScalar(-1.0);
 }
 StrokePoint.prototype.advance = function(next) {
+  this.origin.copy(next.origin);
   this.dir.copy(next.dir);
-  this.leftPosition.copy(next.leftPosition);
-  this.rightPosition.copy(next.rightPosition);
-  this.left.copy(next.left);
+  this.leftPath.copy(next.leftPath);
+  this.rightPath.copy(next.rightPath);
   this.leftUV.copy(next.leftUV);
   next.leftUV.x += 1.0;
   this.rightUV.copy(next.rightUV);
@@ -73,11 +79,12 @@ StrokePoint.prototype.advance = function(next) {
 
 var EmbroideryGeometry = function(options) {
   var strokeData = options.strokeData;
-  var lineWidth = options.lineWidth;
-  var lineWidthHalf = lineWidth * 0.5;
+  var thickness = options.thickness;
+  var thicknessHalf = thickness * 0.5;
+  var speed = options.speed;
   
   //partition stroke data into continuous stroke segments
-  var strokes = partitionStrokeData(strokeData);
+  var strokes = partitionStrokeData(strokeData, speed);
   
   //vertex attribute arrays
   var positions = [];
@@ -97,25 +104,27 @@ var EmbroideryGeometry = function(options) {
   for (stroke of strokes) {
     
     //variables we will use to construct the quads of our mesh
-    curr = new StrokePoint();
+    var curr = new StrokePoint();
+    var prev = new StrokePoint();
+    
+    curr.end = 100.0;
     curr.leftUV.set(0.0, 1.0);
     curr.rightUV.set(0.0, 0.0);
-    prev = new StrokePoint();
     
     function pushQuad(){
       //create a quad using our four vertices
-      pushVertex(prev.rightPosition, prev.left, prev.start, prev.end, prev.rightUV);
-      pushVertex(prev.leftPosition, prev.left, prev.start, prev.end, prev.leftUV);
-      pushVertex(curr.leftPosition, curr.left, curr.start, curr.end, curr.leftUV);
+      pushVertex(prev.origin, prev.leftPath, prev.start, prev.end, prev.rightUV);
+      pushVertex(curr.origin, curr.leftPath, curr.start, curr.end, curr.leftUV);
+      pushVertex(prev.origin, prev.rightPath, prev.start, prev.end, prev.leftUV);
       
-      pushVertex(prev.rightPosition, prev.left, prev.start, prev.end, prev.rightUV);
-      pushVertex(curr.leftPosition, curr.left, curr.start, curr.end, curr.leftUV);
-      pushVertex(curr.rightPosition, curr.left, curr.start, curr.end, curr.rightUV);
+      pushVertex(prev.origin, prev.rightPath, prev.start, prev.end, prev.rightUV);
+      pushVertex(curr.origin, curr.leftPath, curr.start, curr.end, curr.rightUV);
+      pushVertex(curr.origin, curr.rightPath, curr.start, curr.end, curr.leftUV);
     }
     
     for(var i = 0; i < stroke.vertices.length - 2; i++) {
       
-      curr.set(stroke.vertices[i+1].position, stroke.vertices[i].position, lineWidthHalf);
+      curr.set(stroke.vertices[i+1].position, stroke.vertices[i].position, thicknessHalf);
       
       if(i > 0) {
         pushQuad();

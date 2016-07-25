@@ -74,7 +74,7 @@
     }
     gui.add(controller, "speed", 0, 10).onChange(controller.restart);
     gui.add(controller, "spacing", 0, 1).onChange(controller.restart);
-    gui.add(controller, "thickness", 0, 0.5).onChange(controller.restart);
+    gui.add(controller, "thickness", 0.1, 2).onChange(controller.restart);
     gui.add(controller, "restart");
 
     controller.restart();
