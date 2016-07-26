@@ -1,7 +1,7 @@
 // Copyright 2016 Gracious Eloise, Inc. All rights reserved.
 
 /*
-* A stroke represents a continuos line. A 't' written in print for example
+* A stroke represents a continuos line. For example a 't' written in print
 * will produce two strokes.
 */
 var Stroke = function() {
@@ -135,10 +135,11 @@ var EmbroideryGeometry = function(options) {
       pushVertex(strokePoint.origin, strokePoint.rightPath, strokePoint.start, strokePoint.end, strokePoint.rightUV, strokePoint.intensity);
   }
   
+  //represents the number of quads that make up a single stitch
   var divisions = 4;
   
   /*
-  * Creates a mesh that form a piece of exposed
+  * Creates a mesh that forms a piece of exposed
   * thread starting at "start" and ending at "end".
   */
   function makeStitch(start, end, begin, duration) {
@@ -202,6 +203,8 @@ var EmbroideryGeometry = function(options) {
   //partition stroke data into continuous stroke segments
   var strokes = partitionStrokeData(strokeData, speed);
   
+  //We calculate the max duration to help synchronize the end times
+  //of the seperate animations.
   var maxDuration = 0.0;
   for (stroke of strokes) {
     if(stroke.duration > maxDuration) {
@@ -215,6 +218,7 @@ var EmbroideryGeometry = function(options) {
       
       var duration = stroke.duration;
       
+      //used to alternate between exposed and unexposed segments of thread
       var flip = true;
       
       var origin = new THREE.Vector3();
@@ -224,6 +228,7 @@ var EmbroideryGeometry = function(options) {
       var diff = new THREE.Vector3();
       var deltaT = 0.0;
       
+      //define the first line segment of our stroke
       origin.copy(stroke.vertices[0].position);
       
       prevPoint.copy(origin);
@@ -233,12 +238,14 @@ var EmbroideryGeometry = function(options) {
       inc.multiplyScalar(1.0 / sampleCount);
       
       samplePoint.copy(prevPoint);
-      
+      //
       
       var begin = maxDuration - duration;
       var vertexI = 0;
       while(vertexI < stroke.vertices.length - 2) {
         
+        //In the following loop we inch our way along the line 
+        //segment (stroke.vertices[vertexI], stroke.vertices[vertexI+1]).
         var sampleCount = 0;
         while(sampleCount < samples) {
           
@@ -253,6 +260,8 @@ var EmbroideryGeometry = function(options) {
             
             flip = !flip;
             
+            //to produce the illusion of animation adjust the begin time of vertices
+            //as we move along the stroke.
             begin += deltaT;
             prevPoint.copy(samplePoint);
           }
@@ -262,11 +271,13 @@ var EmbroideryGeometry = function(options) {
         }
         vertexI += 1;
         
+        //redefine our line segment
         origin.copy(stroke.vertices[vertexI].position);
         inc.subVectors(stroke.vertices[vertexI+1].position, origin);
         inc.multiplyScalar(1.0 / sampleCount);
         deltaT = inc.length();
         samplePoint.copy(origin);
+        //
       }
     }
   }
