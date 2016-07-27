@@ -57,7 +57,7 @@ var EmbroideryMesh = function(options) {
       void main() {
         vec4 color = texture2D(texture, uv_);
         color *= intensity_;
-        color.w = 1.0;
+        color.a = 1.0;
         gl_FragColor = color;
       }`,
     transparent: true,
